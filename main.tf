@@ -13,15 +13,10 @@ locals {
               echo "ECS_CLUSTER=${aws_ecs_cluster.jenkins_cluster.name}" >> /etc/ecs/ecs.config
               chmod 755 ecs.config
               systemctl restart docker
-              systemctl disable --now --no-block ecs
+              systemctl enable --now --no-block ecs
+              systemctl stop ecs
               systemctl start ecs
               systemctl status ecs
-              if systemctl is-active --quiet ecs; then
-                  echo "ECS service is running"
-              else
-                  echo "ECS service is not running, starting service..."
-                  systemctl restart ecs
-              fi
               EOF2
               EOF
 }
@@ -117,6 +112,7 @@ resource "aws_autoscaling_group" "jenkins_asg" {
   max_size             = 1
   desired_capacity     = 1
   vpc_zone_identifier  = ["subnet-6960e648"]
+  force_delete = true
 
   tag {
     key                 = "Name"
