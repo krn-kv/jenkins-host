@@ -19,11 +19,11 @@ locals {
               sudo yum install -y amazon-efs-utils
               sudo yum install -y python3-pip
               pip3 install botocore
-              mkdir -p /mnt/efs
-              mount -t efs ${aws_efs_file_system.jenkins_efs.id}:/ /mnt/efs
-              echo "${aws_efs_file_system.jenkins_efs.id}:/ /mnt/efs efs defaults,_netdev 0 0" >> /etc/fstab
-              systemctl restart docker
+              systemctl enable --now amazon-ecs-volume-plugin
               systemctl enable --now --no-block ecs
+              systemctl stop ecs
+              sleep 30
+              systemctl stop ecs
               systemctl stop ecs
               systemctl start ecs
               systemctl status ecs
@@ -39,6 +39,25 @@ resource "aws_efs_mount_target" "jenkins_efs_mt_1" {
   file_system_id  = aws_efs_file_system.jenkins_efs.id
   subnet_id       = "subnet-6960e648"
   security_groups = ["sg-0ca22c73e7506a0f0"]
+}
+
+resource "aws_efs_access_point" "jenkins_access_point" {
+  file_system_id = aws_efs_file_system.jenkins_efs.id
+
+  posix_user {
+    uid = 1000
+    gid = 1000
+  }
+
+  root_directory {
+    path = "/var/jenkins_home"
+
+    creation_info {
+      owner_uid    = 1000
+      owner_gid    = 1000
+      permissions  = "755"
+    }
+  }
 }
 
 resource "aws_ecs_cluster" "jenkins_cluster" {
@@ -81,7 +100,7 @@ resource "aws_ecs_task_definition" "jenkins_master_task" {
       mountPoints = [
         {
           sourceVolume  = "jenkins-efs"
-          containerPath = "/mnt/efs"
+          containerPath = "/var/jenkins_home"
           readOnly      = false
         }
       ]
@@ -91,6 +110,10 @@ resource "aws_ecs_task_definition" "jenkins_master_task" {
     name = "jenkins-efs"
     efs_volume_configuration {
       file_system_id = aws_efs_file_system.jenkins_efs.id
+      transit_encryption      = "ENABLED"
+      authorization_config {
+        access_point_id = aws_efs_access_point.jenkins_access_point.id
+      }
     }
   }
 }
