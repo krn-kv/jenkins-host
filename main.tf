@@ -11,7 +11,17 @@ locals {
               cd /etc/ecs/
               touch ecs.config
               echo "ECS_CLUSTER=${aws_ecs_cluster.jenkins_cluster.name}" >> /etc/ecs/ecs.config
+              echo "ECS_ENABLE_TASK_IAM_ROLE=true" >> /etc/ecs/ecs.config
+              echo "ECS_ENABLE_TASK_IAM_ROLE_NETWORK_HOST=true" >> /etc/ecs/ecs.config
+              echo "ECS_AVAILABLE_LOGGING_DRIVERS=[\"awslogs\"]" >> /etc/ecs/ecs.config
+              echo "ECS_VOLUME_PLUGIN_ENABLED=true" >> /etc/ecs/ecs.config
               chmod 755 ecs.config
+              sudo yum install -y amazon-efs-utils
+              sudo yum install -y python3-pip
+              pip3 install botocore
+              mkdir -p /mnt/efs
+              mount -t efs ${aws_efs_file_system.jenkins_efs.id}:/ /mnt/efs
+              echo "${aws_efs_file_system.jenkins_efs.id}:/ /mnt/efs efs defaults,_netdev 0 0" >> /etc/fstab
               systemctl restart docker
               systemctl enable --now --no-block ecs
               systemctl stop ecs
@@ -19,6 +29,16 @@ locals {
               systemctl status ecs
               EOF2
               EOF
+}
+
+resource "aws_efs_file_system" "jenkins_efs" {
+  creation_token = "jenkins-efs"
+}
+
+resource "aws_efs_mount_target" "jenkins_efs_mt_1" {
+  file_system_id  = aws_efs_file_system.jenkins_efs.id
+  subnet_id       = "subnet-6960e648"
+  security_groups = ["sg-0ca22c73e7506a0f0"]
 }
 
 resource "aws_ecs_cluster" "jenkins_cluster" {
@@ -58,8 +78,21 @@ resource "aws_ecs_task_definition" "jenkins_master_task" {
           "awslogs-stream-prefix" = "ecs"
         }
       }
+      mountPoints = [
+        {
+          sourceVolume  = "jenkins-efs"
+          containerPath = "/mnt/efs"
+          readOnly      = false
+        }
+      ]
     }
   ])
+  volume {
+    name = "jenkins-efs"
+    efs_volume_configuration {
+      file_system_id = aws_efs_file_system.jenkins_efs.id
+    }
+  }
 }
 
 resource "aws_ecs_service" "jenkins_master_service" {
