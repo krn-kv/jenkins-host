@@ -20,13 +20,8 @@ locals {
               sudo yum install -y python3-pip
               pip3 install botocore
               systemctl enable --now amazon-ecs-volume-plugin
-              systemctl enable --now --no-block ecs
-              systemctl stop ecs
-              sleep 30
-              systemctl stop ecs
-              systemctl stop ecs
-              systemctl start ecs
-              systemctl status ecs
+              service ecs stop
+              service ecs start
               EOF2
               EOF
 }
