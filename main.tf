@@ -30,6 +30,47 @@ locals {
               EOF2
               EOF
 }
+resource "aws_route_table" "public-rt" {
+  vpc_id = "vpc-1d9f4860"
+
+  route {
+    cidr_block = "0.0.0.0/0"
+    gateway_id = "igw-8b7e44f0" // Internet gateway
+  }
+}
+
+resource "aws_route_table_association" "public-rt" {
+  subnet_id      = "subnet-1fa82c40" // Public subnet
+  route_table_id = aws_route_table.public-rt.id
+}
+
+resource "aws_route_table" "private-rt" {
+  vpc_id = "vpc-1d9f4860"
+
+  route {
+    cidr_block     = "0.0.0.0/0"
+    nat_gateway_id = aws_nat_gateway.nat.id
+  }
+}
+
+resource "aws_route_table_association" "private-rt1" {
+  subnet_id      = "subnet-6960e648" // Private subnet
+  route_table_id = aws_route_table.private-rt.id
+}
+
+resource "aws_route_table_association" "private-rt2" {
+  subnet_id      = "subnet-27d06b41" // Private subnet 2
+  route_table_id = aws_route_table.private-rt.id
+}
+
+resource "aws_nat_gateway" "nat" {
+  allocation_id = aws_eip.nat.id
+  subnet_id     = "subnet-1fa82c40" // Public subnet
+}
+
+resource "aws_eip" "nat" {
+  vpc = true
+}
 
 resource "aws_efs_file_system" "jenkins_efs" {
   creation_token = "jenkins-efs"
@@ -37,7 +78,7 @@ resource "aws_efs_file_system" "jenkins_efs" {
 
 resource "aws_efs_mount_target" "jenkins_efs_mt_1" {
   file_system_id  = aws_efs_file_system.jenkins_efs.id
-  subnet_id       = "subnet-6960e648"
+  subnet_id       = "subnet-6960e648" // Private subnet
   security_groups = ["sg-0ca22c73e7506a0f0"]
 }
 
@@ -126,8 +167,8 @@ resource "aws_ecs_service" "jenkins_master_service" {
   launch_type     = "EC2"
   
   network_configuration {
-    subnets         = ["subnet-6960e648", "subnet-1fa82c40"]
-    security_groups = ["sg-0ca22c73e7506a0f0", "sg-0cd70ecf61463c2e9"]
+    subnets         = ["subnet-6960e648", "subnet-27d06b41"] // Private subnets
+    security_groups = ["sg-0ca22c73e7506a0f0", "sg-0bb4647ebf01edb61", "sg-0cd70ecf61463c2e9"]
   }
 
   load_balancer {
@@ -141,11 +182,12 @@ resource "aws_launch_template" "jenkins_lt" {
   name          = "jenkins-lt"
   image_id      = "ami-04681163a08179f28" // Amazon Linux 2 AMI
   instance_type = "t2.micro"
-  key_name = "local-login"
+  key_name      = "local-login"
   
   network_interfaces {
-    associate_public_ip_address = true // allow pubpic ip
-    security_groups = ["sg-0ca22c73e7506a0f0", "sg-0cd70ecf61463c2e9"]
+    associate_public_ip_address = false // Use private IP
+    subnet_id                   = "subnet-6960e648" // Private subnet
+    security_groups             = ["sg-0ca22c73e7506a0f0", "sg-0bb4647ebf01edb61", "sg-0cd70ecf61463c2e9"]
   }
 
   iam_instance_profile {
@@ -167,7 +209,7 @@ resource "aws_autoscaling_group" "jenkins_asg" {
   min_size             = 1
   max_size             = 1
   desired_capacity     = 1
-  vpc_zone_identifier  = ["subnet-6960e648"]
+  vpc_zone_identifier  = ["subnet-6960e648"] // Private subnet
   force_delete = true
 
   tag {
@@ -187,7 +229,7 @@ resource "aws_lb" "jenkins_lb" {
   internal           = false
   load_balancer_type = "application"
   security_groups    = ["sg-0bb4647ebf01edb61","sg-064f2dc0823276142"]
-  subnets            = ["subnet-6960e648", "subnet-1fa82c40"]
+  subnets            = ["subnet-6960e648", "subnet-27d06b41"] // Private subnets
 }
 
 resource "aws_lb_target_group" "jenkins_tg" {
