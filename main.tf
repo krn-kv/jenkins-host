@@ -44,6 +44,12 @@ resource "aws_route_table_association" "public-rt" {
   route_table_id = aws_route_table.public-rt.id
 }
 
+resource "aws_route_table_association" "public-rt2" {
+  subnet_id      = "subnet-eb33fcda" // Public subnet
+  route_table_id = aws_route_table.public-rt.id
+}
+
+
 resource "aws_route_table" "private-rt" {
   vpc_id = "vpc-1d9f4860"
 
@@ -74,6 +80,8 @@ resource "aws_eip" "nat" {
 
 resource "aws_efs_file_system" "jenkins_efs" {
   creation_token = "jenkins-efs"
+  performance_mode = "generalPurpose" // or "maxIO"
+  throughput_mode = "elastic"
 }
 
 resource "aws_efs_mount_target" "jenkins_efs_mt_1" {
@@ -114,8 +122,8 @@ resource "aws_ecs_task_definition" "jenkins_master_task" {
   family                   = "jenkins-master"
   network_mode             = "awsvpc"
   requires_compatibilities = ["EC2"]
-  cpu                      = "128"
-  memory                   = "256"
+  cpu                      = "512"
+  memory                   = "900"
 
   container_definitions = jsonencode([
     {
@@ -229,7 +237,7 @@ resource "aws_lb" "jenkins_lb" {
   internal           = false
   load_balancer_type = "application"
   security_groups    = ["sg-0bb4647ebf01edb61","sg-064f2dc0823276142"]
-  subnets            = ["subnet-6960e648", "subnet-27d06b41"] // Private subnets
+  subnets            = ["subnet-1fa82c40", "subnet-eb33fcda", "subnet-6960e648"] // Public subnets & Private
 }
 
 resource "aws_lb_target_group" "jenkins_tg" {
@@ -239,7 +247,8 @@ resource "aws_lb_target_group" "jenkins_tg" {
   vpc_id       = "vpc-1d9f4860"
   target_type  = "ip"
   health_check {
-    path                = "/"
+    path                = "/login"
+    port                = 8080
     protocol            = "HTTP"
     interval            = 30
     timeout             = 5
