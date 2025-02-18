@@ -117,7 +117,7 @@ resource "aws_ecs_task_definition" "jenkins_master_task" {
   family                   = "jenkins-master"
   network_mode             = "awsvpc"
   requires_compatibilities = ["EC2"]
-  cpu                      = "512"
+  cpu                      = "900"
   memory                   = "900"
 
   container_definitions = jsonencode([
