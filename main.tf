@@ -249,14 +249,15 @@ resource "aws_lb_target_group" "jenkins_tg" {
     timeout             = 5
     healthy_threshold   = 5
     unhealthy_threshold = 2
-    matcher             = "200"
+    matcher             = "200-299"
   }
 }
 
 resource "aws_lb_listener" "jenkins_listener" {
   load_balancer_arn = aws_lb.jenkins_lb.arn
-  port              = "80"
-  protocol          = "HTTP"
+  port              = "443"
+  protocol          = "HTTPS"
+  certificate_arn   = "arn:aws:acm:us-east-1:841578821997:certificate/2e2bcf59-39db-4c68-8041-c86e0e5fdb74"
 
   default_action {
     type             = "forward"
