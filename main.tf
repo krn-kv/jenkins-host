@@ -385,7 +385,7 @@ resource "aws_iam_role_policy" "ecs_instance_role_ec2_policy" {
         Effect = "Allow"
         Action = [
           "ec2:*",
-          "autoscaling:*
+          "autoscaling:*"
         ]
         Resource = "*"
       }
