@@ -384,7 +384,7 @@ resource "aws_iam_role_policy" "ecs_instance_role_ec2_policy" {
       {
         Effect = "Allow"
         Action = "ec2:*"
-        Resource = "arn:aws:ec2:us-east-1:841578821997:instance/*"
+        Resource = "*"
       }
     ]
   })
