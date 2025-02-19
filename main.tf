@@ -373,6 +373,22 @@ resource "aws_iam_role_policy" "ecs_instance_role_policy" {
   })
 }
 
+resource "aws_iam_role_policy" "ecs_instance_role_ec2_policy" {
+  name   = "ecs_instance_role_ec2_policy"
+  role   = aws_iam_role.ecs_instance_role.name
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = "ec2:*"
+        Resource = "arn:aws:ec2:us-east-1:841578821997:instance/*"
+      }
+    ]
+  })
+}
+
 output "jenkins_url" {
   value       = aws_lb.jenkins_lb.dns_name
   description = "The DNS name of the Jenkins load balancer"
