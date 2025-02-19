@@ -357,6 +357,22 @@ resource "aws_iam_instance_profile" "ecs_instance_profile" {
   role = aws_iam_role.ecs_instance_role.name
 }
 
+resource "aws_iam_role_policy" "ecs_instance_role_policy" {
+  name   = "ecs_instance_role_policy"
+  role   = aws_iam_role.ecs_instance_role.name
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = "iam:PassRole"
+        Resource = aws_iam_role.ecs_instance_role.arn
+      }
+    ]
+  })
+}
+
 output "jenkins_url" {
   value       = aws_lb.jenkins_lb.dns_name
   description = "The DNS name of the Jenkins load balancer"
