@@ -117,13 +117,13 @@ resource "aws_ecs_task_definition" "jenkins_master_task" {
   family                   = "jenkins-master"
   network_mode             = "awsvpc"
   requires_compatibilities = ["EC2"]
-  cpu                      = "900"
-  memory                   = "900"
+  cpu                      = "1500"
+  memory                   = "1500"
 
   container_definitions = jsonencode([
     {
       name      = "jenkins-master"
-      image     = "jenkins/jenkins:lts"
+      image     = "841578821997.dkr.ecr.us-east-1.amazonaws.com/querkydevs-jenkins-terraform:latest"
       essential = true
       task_role_arn = aws_iam_role.ecs_task_instance_role.arn
       execution_role_arn = aws_iam_role.ecs_task_instance_role.arn
@@ -168,6 +168,7 @@ resource "aws_ecs_service" "jenkins_master_service" {
   task_definition = aws_ecs_task_definition.jenkins_master_task.arn
   desired_count   = 1
   launch_type     = "EC2"
+  force_new_deployment = true
   
   network_configuration {
     subnets         = ["subnet-6960e648", "subnet-27d06b41"] // Private subnets
@@ -183,9 +184,8 @@ resource "aws_ecs_service" "jenkins_master_service" {
 
 resource "aws_launch_template" "jenkins_lt" {
   name          = "jenkins-lt"
-  image_id      = "ami-04681163a08179f28" // Amazon Linux 2 AMI
-  instance_type = "t2.micro"
-  key_name      = "local-login"
+  image_id      = "ami-04681163a08179f28" // Amazon Linux 2 AMI x86
+  instance_type = "t3a.small"             // x86
   
   network_interfaces {
     associate_public_ip_address = false // Use private IP
